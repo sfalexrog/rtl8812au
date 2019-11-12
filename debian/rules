@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+
+include /usr/share/dpkg/pkg-info.mk
+
+%:
+	dh $@ --with dkms
+
+override_dh_install:
+	dh_install Kconfig LICENSE Makefile realtek_88XXau.conf Realtek_Changelog.txt usr/src/realtek-rtl88xxau-$(DEB_VERSION_UPSTREAM)
+	dh_install core hal include os_dep platform usr/src/realtek-rtl88xxau-$(DEB_VERSION_UPSTREAM)
+
+override_dh_dkms:
+	dh_dkms -V $(DEB_VERSION_UPSTREAM) -- dkms.conf
+
+override_dh_auto_configure:
+override_dh_auto_build:
+override_dh_auto_test:
+override_dh_auto_install:
+override_dh_auto_clean:

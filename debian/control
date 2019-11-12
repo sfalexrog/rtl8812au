@@ -1,0 +1,8 @@
+Source: realtek-rtl88xxau-dkms
+Maintainer: Alexey Rogachevskiy <sfalexrog@gmail.com>
+Build-Depends: debhelper (>= 9), dkms, bc
+
+Package: realtek-rtl88xxau-dkms
+Architecture: all
+Depends: ${misc:Depends}
+Description: DKMS source for Realtek 8812au wireless chipset
