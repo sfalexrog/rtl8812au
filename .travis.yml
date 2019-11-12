@@ -1,60 +1,44 @@
 language: c
 compiler: gcc
-sudo: required
+os: linux
 dist: bionic
+arch: arm64
+services:
+  - docker
 
-install:
-  - export ALL_DEB=$(wget --quiet -O - ${KERNEL_URL}v${KVER}/ | grep -o 'href=".*"' | grep -m1 all | cut -d '"' -f 2)
-  - export KVER_BUILD=$(echo $ALL_DEB | cut -d '_' -f 1 | cut -c15-)
-  - wget ${KERNEL_URL}v${KVER}/$(wget --quiet -O - ${KERNEL_URL}v${KVER}/ | grep -o 'href=".*"' | grep headers | grep generic | grep -m1 amd64 | cut -d '"' -f 2)
-  - wget ${KERNEL_URL}v${KVER}/$ALL_DEB
-  - sudo dpkg -i *.deb
-
-script:
-  - make CC=$COMPILER KVER=$KVER_BUILD-generic
 env:
   global:
-    - KERNEL_URL=http://kernel.ubuntu.com/~kernel-ppa/mainline/
+    - DOCKER=sfalexrog/raspbian:buster-2019-09-30
+  jobs:
+    - KVER=4.19.75
 
-matrix:
-  include:
-    - compiler: gcc
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-5
-      env: COMPILER=gcc-5 KVER=5.3.7
-    - compiler: gcc
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-6
-      env: COMPILER=gcc-6 KVER=5.3.7
-    - compiler: gcc
-      env: COMPILER=gcc-7 KVER=5.3.7
-    - compiler: gcc
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-5
-      env: COMPILER=gcc-5 KVER=4.19.67
-    - compiler: gcc
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-6
-      env: COMPILER=gcc-6 KVER=4.19.67
-    - compiler: gcc
-      env: COMPILER=gcc-7 KVER=4.19.67
-    - compiler: gcc
-      env: COMPILER=gcc-7 KVER=4.15.18
-    - compiler: gcc
-      env: COMPILER=gcc-7 KVER=4.9.197
+before_script:
+  - mkdir -p ${HOME}/output
+  - sudo docker pull ${DOCKER}
+
+script:
+  - sudo docker run --rm -v $(pwd):/realtek-rtl88xxau-dkms-5.2.20 -v ${HOME}/output:/output --env KVER=${KVER} ${DOCKER} /bin/bash -c '
+      apt update && apt install -y bc build-essential debhelper dkms fakeroot &&
+      cd realtek-rtl88xxau-dkms-5.2.20 && dpkg-buildpackage &&
+      cp ci/rpi-control /etc/dkms/template-dkms-mkbmdeb/debian/control && cd / &&
+      cp *.deb /output &&
+      apt install ./*.deb &&
+      dkms mkbmdeb realtek-rtl88xxau/5.2.20 -k "${KVER}+" &&
+      dkms mkbmdeb realtek-rtl88xxau/5.2.20 -k "${KVER}-v7+" &&
+      dkms mkbmdeb realtek-rtl88xxau/5.2.20 -k "${KVER}-v7l+" &&
+      cp /var/lib/dkms/realtek-rtl88xxau/5.2.20/bmdeb/*.deb /output'
+  - find ${HOME}/output -iname '*.deb' -exec dpkg -I {} \;
+
+before_deploy:
+  - mkdir output
+  - cp ${HOME}/output/*.deb output/
+  - find output -iname '*.deb' -exec dpkg -I {} \;
+
+deploy:
+  provider: releases
+  api_key: ${GITHUB_OAUTH_TOKEN}
+  skip_cleanup: true
+  file_glob: true
+  file: output/*.deb
+  on:
+    tags: true
