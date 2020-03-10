@@ -8,9 +8,9 @@ services:
 
 env:
   global:
-    - DOCKER=sfalexrog/raspbian:buster-2019-09-30
+    - DOCKER=sfalexrog/raspbian:buster-2020-02-14
   jobs:
-    - KVER=4.19.75
+    - KVER=4.19.97
 
 before_script:
   - mkdir -p ${HOME}/output
